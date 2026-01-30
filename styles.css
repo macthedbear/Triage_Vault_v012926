@@ -18,10 +18,6 @@ header {
   height: 40px;
 }
 
-/* Patch 4.0: 2-over-1 layout
-   Top row: Intake | Index
-   Bottom row: Artifact (full width)
-*/
 main {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -33,19 +29,11 @@ main {
   align-items: start;
 }
 
-#intake {
-  grid-area: intake;
-}
+#intake { grid-area: intake; }
+#index  { grid-area: index; }
+#detail { grid-area: detail; }
 
-#index {
-  grid-area: index;
-}
-
-#detail {
-  grid-area: detail;
-}
-
-/* Mobile: stack Intake -> Index -> Artifact */
+/* Mobile: stack panels top-to-bottom */
 @media (max-width: 900px) {
   main {
     grid-template-columns: 1fr;
@@ -120,6 +108,7 @@ button {
 ul {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 li {
