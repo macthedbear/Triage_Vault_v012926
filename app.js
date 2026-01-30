@@ -20,6 +20,15 @@ let lastTapAt = 0;
 // Patch 1C-A: remember last opened artifact object for rename defaults
 let lastOpenedArtifact = null;
 
+// Patch 1E: rename button is only enabled when an artifact is opened
+function setRenameEnabled(enabled) {
+  const btn = document.getElementById("renameSpineBtn");
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? "1" : "0.5";
+  btn.style.cursor = enabled ? "pointer" : "not-allowed";
+}
+
 function spineLabelOf(a) {
   const v = String(a?.spineLabel || "").trim();
   return v ? v : "UNKNOWN";
@@ -35,6 +44,7 @@ function showPreview(a) {
   // Preview is between index and full open, so do not arm Freeze/Abandon.
   selectedId = null;
   lastOpenedArtifact = null;
+  setRenameEnabled(false);
 
   const label = spineLabelOf(a);
   const createdAt = String(a?.createdAt || "UNKNOWN");
@@ -59,6 +69,7 @@ function openFull(a) {
   selectedId = a.id;
   lastOpenedArtifact = a;
   detailEl.textContent = a.raw;
+  setRenameEnabled(true);
 }
 
 function renderList() {
@@ -122,7 +133,14 @@ function ensureRenameButton() {
   const btn = document.createElement("button");
   btn.id = "renameSpineBtn";
   btn.textContent = "Rename SpineLabel";
+
+  // Patch 1E: default to disabled until an artifact is opened
+  btn.disabled = true;
+  btn.style.opacity = "0.5";
+  btn.style.cursor = "not-allowed";
+
   btn.onclick = () => {
+    // Patch 1E: button should be disabled in preview, but keep guardrail anyway.
     if (!selectedId) {
       alert("Open an artifact first, then rename its SpineLabel.");
       return;
@@ -150,6 +168,7 @@ function ensureRenameButton() {
     if (updated) {
       lastOpenedArtifact = updated;
       detailEl.textContent = updated.raw;
+      setRenameEnabled(true);
     }
   };
 
@@ -188,4 +207,8 @@ abandonBtn.onclick = () => {
 };
 
 ensureRenameButton();
+
+// Patch 1E: reflect initial state (no artifact opened yet)
+setRenameEnabled(!!selectedId);
+
 renderList();
