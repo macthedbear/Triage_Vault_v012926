@@ -1,3 +1,4 @@
+// index.js
 const STORAGE_KEY = "artifactVault.v1";
 
 function loadArtifacts() {
@@ -95,6 +96,43 @@ window.VAULT = {
     saveArtifacts(artifacts);
 
     return { ok: true };
+  },
+
+  moveToContainer(containerId, artifactId) {
+    const artifacts = loadArtifacts();
+
+    const target = artifacts.find(x => x.id === containerId);
+    const item = artifacts.find(x => x.id === artifactId);
+
+    if (!target || !isContainer(target)) return { ok: false, reason: "NOT_A_CONTAINER" };
+    if (!item) return { ok: false, reason: "MISSING_ITEM" };
+
+    // v1: no nested containers
+    if (isContainer(item)) return { ok: false, reason: "NO_NESTED_CONTAINERS" };
+
+    // no self reference
+    if (target.id === item.id) return { ok: false, reason: "SELF_REFERENCE" };
+
+    // Ensure contains arrays exist and enforce single-home:
+    // remove the artifact from every other container before adding to target
+    for (const c of artifacts) {
+      if (!isContainer(c)) continue;
+      if (!Array.isArray(c.contains)) c.contains = [];
+      const idx = c.contains.indexOf(item.id);
+      if (idx !== -1 && c.id !== target.id) {
+        c.contains.splice(idx, 1);
+      }
+    }
+
+    if (!Array.isArray(target.contains)) target.contains = [];
+
+    const alreadyPresent = target.contains.includes(item.id);
+    if (!alreadyPresent) {
+      target.contains.push(item.id);
+    }
+
+    saveArtifacts(artifacts);
+    return { ok: true, alreadyPresent };
   },
 
   updateState(id, state) {
