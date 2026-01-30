@@ -1,3 +1,4 @@
+// app.js
 const intakeText = document.getElementById("intakeText");
 const preview = document.getElementById("preview");
 const previewBtn = document.getElementById("previewBtn");
@@ -60,39 +61,31 @@ function showPreview(a) {
   // Preview is between index and full open, so do not arm Freeze/Abandon.
   selectedId = null;
   lastOpenedArtifact = null;
+
+  // On preview, rename and add-to-folder should not be enabled.
   setRenameEnabled(false);
   setAddToFolderEnabled(false);
 
-  const label = spineLabelOf(a);
-  const createdAt = String(a?.createdAt || "UNKNOWN");
-  const state = String(a?.state || "UNKNOWN");
-  const id = String(a?.id || "UNKNOWN");
-  const hash = String(a?.hash || "UNKNOWN");
-  const hint = IS_TOUCH ? "\n\n(tap again to open)" : "";
-
   if (isContainer(a)) {
-    const count = Array.isArray(a.contains) ? a.contains.length : 0;
     detailEl.textContent =
-      `Folder: ${label}\n` +
-      `CreatedAt: ${createdAt}\n` +
-      `State: ${state}\n` +
-      `ID: ${id}\n` +
-      `Hash: ${hash}\n` +
-      `Contains: ${count} item(s)` +
-      hint;
+      `Folder: ${spineLabelOf(a)}\n` +
+      `Created: ${a.createdAt}\n` +
+      `State: ${a.state}\n` +
+      `ID: ${a.id}\n` +
+      `Hash: ${a.hash}\n` +
+      `Contains: ${(Array.isArray(a.contains) ? a.contains.length : 0)}\n` +
+      (IS_TOUCH ? `\n(tap again to open)` : ``);
     return;
   }
 
-  const snip = snippetOf(a?.raw);
-
   detailEl.textContent =
-    `SpineLabel: ${label}\n` +
-    `CreatedAt: ${createdAt}\n` +
-    `State: ${state}\n` +
-    `ID: ${id}\n` +
-    `Hash: ${hash}\n\n` +
-    `Snippet:\n${snip}` +
-    hint;
+    `SpineLabel: ${spineLabelOf(a)}\n` +
+    `Created: ${a.createdAt}\n` +
+    `State: ${a.state}\n` +
+    `ID: ${a.id}\n` +
+    `Hash: ${a.hash}\n\n` +
+    `Snippet:\n${snippetOf(a.raw)}` +
+    (IS_TOUCH ? `\n\n(tap again to open)` : ``);
 }
 
 function openFull(a) {
@@ -110,16 +103,16 @@ function openFull(a) {
 
     detailEl.textContent =
       `Folder Opened: ${spineLabelOf(a)}\n` +
-      `Contains: ${(Array.isArray(a.contains) ? a.contains.length : 0)} item(s)\n\n` +
-      `Select an item from the list to preview/open.\n` +
-      `(Use “Back” at the top of the list to return.)`;
+      `Contains: ${(Array.isArray(a.contains) ? a.contains.length : 0)}\n\n` +
+      `Use the index to select an artifact inside.\n` +
+      `Back returns to All.\n`;
 
     renderList();
     return;
   }
 
-  // Normal artifact open
-  detailEl.textContent = a.raw;
+  // Opening a real artifact shows full raw payload
+  detailEl.textContent = String(a.raw || "");
 }
 
 function renderList() {
@@ -206,12 +199,21 @@ function renderList() {
     return;
   }
 
-  // Default: render ALL artifacts and containers
-  all.forEach(a => {
+  // Default (projected All view):
+  // - Always show folders (containers)
+  // - Show only artifacts that are not contained in any folder
+  const filedIds = new Set();
+  containers.forEach(c => {
+    if (!Array.isArray(c.contains)) return;
+    c.contains.forEach(id => filedIds.add(id));
+  });
+
+  // 1) Folders
+  containers.forEach(a => {
     const li = document.createElement("li");
 
     const primary = document.createElement("div");
-    primary.textContent = isContainer(a) ? `📁 ${spineLabelOf(a)}` : spineLabelOf(a);
+    primary.textContent = `📁 ${spineLabelOf(a)}`;
 
     const secondary = document.createElement("div");
     secondary.textContent = `${a.createdAt} · ${a.state}`;
@@ -250,13 +252,58 @@ function renderList() {
 
     listEl.appendChild(li);
   });
+
+  // 2) Unfiled artifacts only
+  all
+    .filter(a => !isContainer(a))
+    .filter(a => !filedIds.has(a.id))
+    .forEach(a => {
+      const li = document.createElement("li");
+
+      const primary = document.createElement("div");
+      primary.textContent = spineLabelOf(a);
+
+      const secondary = document.createElement("div");
+      secondary.textContent = `${a.createdAt} · ${a.state}`;
+      secondary.style.opacity = "0.75";
+      secondary.style.fontSize = "0.9em";
+
+      li.appendChild(primary);
+      li.appendChild(secondary);
+
+      // Desktop: hover previews, click opens full
+      li.onmouseenter = () => {
+        if (!IS_TOUCH) showPreview(a);
+      };
+
+      li.onclick = () => {
+        if (!IS_TOUCH) {
+          openFull(a);
+          return;
+        }
+
+        // Mobile/touch: first tap previews, second tap opens
+        const now = Date.now();
+        const isSecondTapSame =
+          lastTapId === a.id && (now - lastTapAt) <= 900;
+
+        if (isSecondTapSame) {
+          openFull(a);
+          lastTapId = null;
+          lastTapAt = 0;
+        } else {
+          showPreview(a);
+          lastTapId = a.id;
+          lastTapAt = now;
+        }
+      };
+
+      listEl.appendChild(li);
+    });
 }
 
 function ensureRenameButton() {
-  const detailSection = document.getElementById("detail");
-  if (!detailSection) return;
-
-  const actions = detailSection.querySelector(".actions");
+  const actions = document.querySelector(".actions");
   if (!actions) return;
 
   if (document.getElementById("renameSpineBtn")) return;
@@ -264,64 +311,68 @@ function ensureRenameButton() {
   const btn = document.createElement("button");
   btn.id = "renameSpineBtn";
   btn.textContent = "Rename SpineLabel";
-
-  // Patch 1E: default to disabled until an artifact is opened
   btn.disabled = true;
   btn.style.opacity = "0.5";
   btn.style.cursor = "not-allowed";
 
   btn.onclick = () => {
-    if (!selectedId) return; // disabled anyway
+    if (!selectedId) return;
 
-    const artifacts = VAULT.list();
-    const current = artifacts.find(x => x.id === selectedId) || lastOpenedArtifact;
+    // Use last opened artifact for default if available
+    const all = VAULT.list();
+    const current = all.find(x => x.id === selectedId);
+    if (!current) return;
 
     const currentLabel = spineLabelOf(current);
-    const next = prompt("New SpineLabel (one line):", currentLabel);
-    if (next === null) return;
+    const proposed = prompt("New SpineLabel (one line):", currentLabel);
+    if (proposed === null) return;
 
-    const cleaned = String(next).trim();
+    const cleaned = String(proposed).trim();
     if (!cleaned) {
       alert("SpineLabel cannot be empty.");
       return;
     }
 
-    VAULT.updateSpineLabel(selectedId, cleaned);
+    const ok = VAULT.updateSpineLabel(selectedId, cleaned);
+    if (!ok) {
+      alert("Rename failed.");
+      return;
+    }
 
+    // Re-render list so the label updates in the index
     renderList();
 
-    const updated = VAULT.list().find(x => x.id === selectedId);
-    if (updated) {
-      lastOpenedArtifact = updated;
-
-      // If a container is opened, keep container view text; if artifact, show raw
-      if (isContainer(updated)) {
+    // Refresh detail view for continuity
+    const refreshed = VAULT.list().find(x => x.id === selectedId);
+    if (refreshed) {
+      if (isContainer(refreshed)) {
         detailEl.textContent =
-          `Folder Opened: ${spineLabelOf(updated)}\n` +
-          `Contains: ${(Array.isArray(updated.contains) ? updated.contains.length : 0)} item(s)\n\n` +
-          `Select an item from the list to preview/open.\n` +
-          `(Use “Back” at the top of the list to return.)`;
+          `Folder Opened: ${spineLabelOf(refreshed)}\n` +
+          `Contains: ${(Array.isArray(refreshed.contains) ? refreshed.contains.length : 0)}\n\n` +
+          `Use the index to select an artifact inside.\n` +
+          `Back returns to All.\n`;
       } else {
-        detailEl.textContent = updated.raw;
+        detailEl.textContent = String(refreshed.raw || "");
       }
 
+      // Maintain correct button arming after rename
       setRenameEnabled(true);
-      setAddToFolderEnabled(!isContainer(updated));
+      setAddToFolderEnabled(!isContainer(refreshed));
     }
   };
 
-  actions.insertBefore(btn, actions.firstChild);
+  // Put rename before Freeze/Abandon
+  actions.insertBefore(btn, freezeBtn);
 }
 
 function ensureFolderButtons() {
-  const detailSection = document.getElementById("detail");
-  if (!detailSection) return;
-
-  const actions = detailSection.querySelector(".actions");
+  const actions = document.querySelector(".actions");
   if (!actions) return;
 
   if (document.getElementById("newFolderBtn")) return;
+  if (document.getElementById("addToFolderBtn")) return;
 
+  // New Folder
   const newBtn = document.createElement("button");
   newBtn.id = "newFolderBtn";
   newBtn.textContent = "New Folder";
@@ -344,11 +395,10 @@ function ensureFolderButtons() {
     renderList();
   };
 
+  // Add to Folder
   const addBtn = document.createElement("button");
   addBtn.id = "addToFolderBtn";
   addBtn.textContent = "Add to Folder";
-
-  // default disabled until a real artifact is opened
   addBtn.disabled = true;
   addBtn.style.opacity = "0.5";
   addBtn.style.cursor = "not-allowed";
@@ -380,7 +430,7 @@ function ensureFolderButtons() {
     }
 
     const target = folders[idx - 1];
-    const res = VAULT.addToContainer(target.id, current.id);
+    const res = VAULT.moveToContainer(target.id, current.id);
 
     if (!res || !res.ok) {
       const reason = res && res.reason ? res.reason : "UNKNOWN";
@@ -409,39 +459,42 @@ function ensureFolderButtons() {
 
 previewBtn.onclick = () => {
   preview.textContent = intakeText.value;
-  acceptBtn.disabled = !intakeText.value.trim();
+
+  const hasText = String(intakeText.value || "").trim().length > 0;
+  acceptBtn.disabled = !hasText;
 };
 
 acceptBtn.onclick = () => {
-  const { record, duplicate } = VAULT.add(intakeText.value);
-  if (duplicate) {
+  const raw = intakeText.value;
+  if (!String(raw || "").trim()) return;
+
+  const res = VAULT.add(raw);
+  if (res && res.duplicate) {
     alert("Duplicate detected. Stored anyway. Review and choose action if needed.");
   }
+
   intakeText.value = "";
   preview.textContent = "";
   acceptBtn.disabled = true;
+
   renderList();
 };
 
 freezeBtn.onclick = () => {
-  if (selectedId) {
-    VAULT.updateState(selectedId, "FROZEN");
-    renderList();
-  }
+  if (!selectedId) return;
+  VAULT.updateState(selectedId, "FROZEN");
+  renderList();
 };
 
 abandonBtn.onclick = () => {
-  if (selectedId) {
-    VAULT.updateState(selectedId, "ABANDONED");
-    renderList();
-  }
+  if (!selectedId) return;
+  VAULT.updateState(selectedId, "ABANDONED");
+  renderList();
 };
 
+// Ensure injected controls exist at startup
 ensureRenameButton();
 ensureFolderButtons();
 
-// Initial state: nothing opened yet
-setRenameEnabled(!!selectedId);
-setAddToFolderEnabled(false);
-
+// Initial render
 renderList();
