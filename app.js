@@ -17,6 +17,9 @@ const IS_TOUCH =
 let lastTapId = null;
 let lastTapAt = 0;
 
+// Patch 1C-A: remember last opened artifact object for rename defaults
+let lastOpenedArtifact = null;
+
 function spineLabelOf(a) {
   const v = String(a?.spineLabel || "").trim();
   return v ? v : "UNKNOWN";
@@ -31,6 +34,7 @@ function snippetOf(raw, n = 240) {
 function showPreview(a) {
   // Preview is between index and full open, so do not arm Freeze/Abandon.
   selectedId = null;
+  lastOpenedArtifact = null;
 
   const label = spineLabelOf(a);
   const createdAt = String(a?.createdAt || "UNKNOWN");
@@ -53,6 +57,7 @@ function showPreview(a) {
 
 function openFull(a) {
   selectedId = a.id;
+  lastOpenedArtifact = a;
   detailEl.textContent = a.raw;
 }
 
@@ -104,6 +109,54 @@ function renderList() {
   });
 }
 
+function ensureRenameButton() {
+  // Insert a Rename button into the existing detail actions area without editing HTML.
+  const detailSection = document.getElementById("detail");
+  if (!detailSection) return;
+
+  const actions = detailSection.querySelector(".actions");
+  if (!actions) return;
+
+  if (document.getElementById("renameSpineBtn")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "renameSpineBtn";
+  btn.textContent = "Rename SpineLabel";
+  btn.onclick = () => {
+    if (!selectedId) {
+      alert("Open an artifact first, then rename its SpineLabel.");
+      return;
+    }
+
+    const artifacts = VAULT.list();
+    const current = artifacts.find(x => x.id === selectedId) || lastOpenedArtifact;
+
+    const currentLabel = spineLabelOf(current);
+    const next = prompt("New SpineLabel (one line):", currentLabel);
+    if (next === null) return; // cancelled
+
+    const cleaned = String(next).trim();
+    if (!cleaned) {
+      alert("SpineLabel cannot be empty.");
+      return;
+    }
+
+    // Patch 1C-A: metadata-only rename, allowed even when Frozen.
+    VAULT.updateSpineLabel(selectedId, cleaned);
+
+    // Refresh list and keep the artifact open
+    renderList();
+    const updated = VAULT.list().find(x => x.id === selectedId);
+    if (updated) {
+      lastOpenedArtifact = updated;
+      detailEl.textContent = updated.raw;
+    }
+  };
+
+  // Put rename button before Freeze/Abandon for flow
+  actions.insertBefore(btn, actions.firstChild);
+}
+
 previewBtn.onclick = () => {
   preview.textContent = intakeText.value;
   acceptBtn.disabled = !intakeText.value.trim();
@@ -134,4 +187,5 @@ abandonBtn.onclick = () => {
   }
 };
 
+ensureRenameButton();
 renderList();
