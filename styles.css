@@ -33,18 +33,46 @@ section {
 
 textarea {
   width: 100%;
-  height: 160px;
+
+  /* constrain + scroll so buttons stay visible */
+  max-height: 18rem;     /* fallback */
+  overflow-y: auto;
+
+  /* keep it readable */
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+/* Prefer a “~12 lines” cap when supported */
+@supports (max-height: 12lh) {
+  textarea {
+    max-height: 12lh;
+  }
 }
 
 pre {
   background: #0e1430;
   padding: 8px;
 
-  /* NEW BEHAVIOR */
-  white-space: pre-wrap;        /* preserve newlines, allow soft wrap */
-  overflow-wrap: anywhere;      /* force wrap on long tokens */
-  max-width: 72ch;              /* timestamp width + ~12 chars buffer */
-  /* REMOVED: max-height constraint to avoid truncation */
+  /* wrap behavior */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+
+  /* constrain width so cards don’t stretch */
+  max-width: 72ch;
+
+  /* constrain + scroll so buttons stay visible */
+  max-height: 18rem;     /* fallback */
+  overflow-y: auto;
+
+  box-sizing: border-box;
+}
+
+/* Prefer a “~12 lines” cap when supported */
+@supports (max-height: 12lh) {
+  pre {
+    max-height: 12lh;
+  }
 }
 
 .actions {
