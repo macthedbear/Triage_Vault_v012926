@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Artifact Vault</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="triageVault.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <img src="triageVault.png" alt="Artifact Vault" class="app-icon" />
+    <h1>Artifact Vault</h1>
+    <p class="subtitle">Stream of Consciousness · Concepts · Triage · Abandonment</p>
+  </header>
+
+  <main>
+    <section id="intake">
+      <h2>Intake</h2>
+      <textarea id="intakeText" placeholder="Paste TRIAGE_ARCHIVE_BLOCK_V1 here"></textarea>
+      <div class="actions">
+        <button id="previewBtn">Preview</button>
+        <button id="acceptBtn" disabled>Accept</button>
+      </div>
+      <pre id="preview"></pre>
+    </section>
+
+    <section id="index">
+      <h2>Index</h2>
+      <ul id="artifactList"></ul>
+    </section>
+
+    <section id="detail">
+      <h2>Artifact</h2>
+      <pre id="artifactDetail"></pre>
+      <div class="actions">
+        <button id="freezeBtn">Freeze</button>
+        <button id="abandonBtn">Abandon</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="index.js"></script>
+  <script defer src="app.js"></script>
+</body>
+</html>

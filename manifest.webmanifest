@@ -1,0 +1,15 @@
+{
+  "name": "Artifact Vault",
+  "short_name": "ArtifactVault",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#121a33",
+  "icons": [
+    {
+      "src": "triageVault.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
