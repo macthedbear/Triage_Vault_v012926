@@ -51,5 +51,15 @@ window.VAULT = {
       a.state = state;
       saveArtifacts(artifacts);
     }
+  },
+
+  // Patch 1C-A: rename SpineLabel (metadata only)
+  updateSpineLabel(id, spineLabel) {
+    const artifacts = loadArtifacts();
+    const a = artifacts.find(x => x.id === id);
+    if (a) {
+      a.spineLabel = String(spineLabel || "").trim() || "UNKNOWN";
+      saveArtifacts(artifacts);
+    }
   }
 };
