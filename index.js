@@ -21,6 +21,7 @@ window.VAULT = {
   list() {
     return loadArtifacts();
   },
+
   add(raw) {
     const artifacts = loadArtifacts();
     const payloadHash = hash(raw);
@@ -31,7 +32,10 @@ window.VAULT = {
       createdAt: new Date().toISOString(),
       state: "ACCEPTED",
       hash: payloadHash,
-      raw
+      raw: raw,
+
+      // Patch 1A: new primitive
+      spineLabel: "UNKNOWN"
     };
 
     artifacts.push(record);
@@ -39,6 +43,7 @@ window.VAULT = {
 
     return { record, duplicate };
   },
+
   updateState(id, state) {
     const artifacts = loadArtifacts();
     const a = artifacts.find(x => x.id === id);
